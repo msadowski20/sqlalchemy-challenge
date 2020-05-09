@@ -1,5 +1,6 @@
-# API Keys
-config.py
+# not the python flask file
+!flask_app.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
