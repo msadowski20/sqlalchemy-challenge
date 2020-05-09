@@ -20,7 +20,7 @@ Base = automap_base()
 Base.prepare(engine, reflect=True)
 
 # Save reference to the table
-measurement = Base.classes.passenger
+measurement = Base.classes.measurement
 station = Base.classes.station
 
 #################################################
@@ -33,18 +33,16 @@ app = Flask(__name__)
 # Flask Routes
 #################################################
 
-app = Flask(__name__)
-
 @app.route("/")
 def home():
     return(
-        f"Welcome to the Climate Analysis API!"
+        f"Welcome to the Climate Analysis API!<br/>"
         f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation"
-        f"/api/v1.0/stations"
-        f"/api/v1.0/tobs"
-        f"/api/v1.0/<start>"
-        f"/api/v1.0/<start>/<end>"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/<start><br/>"
+        f"/api/v1.0/<start>/<end><br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -87,6 +85,7 @@ def stations():
 @app.route("/api/v1.0/tobs")
 def tobs():
 
+    # Set date and station variables
     last_day = dt.date(2017, 8, 23)
     year_ago = last_day - dt.timedelta(days=365)
     most_active = "USC00519397"
@@ -96,7 +95,7 @@ def tobs():
 
     # Query station table for station name
     results = session.query(measurement.tobs).\
-        filter(measurement.station == most_active)
+        filter(measurement.station == most_active).\
         filter(measurement.date >= year_ago).\
         filter(measurement.date <= last_day).\
         order_by(measurement.date).all()
@@ -109,12 +108,75 @@ def tobs():
     return jsonify(station_temps)
 
 
-@app.route("/api/v1.0/<start>")
-def start():
+@app.route("/api/v1.0/<start_date>")
+def calc_temp_start(start_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """
+    TMIN, TAVG, and TMAX for a list of dates.
+    
+    Args:
+        start_date (string): A date string in the format %Y-%m-%d
+        end_date (string): A date string in the format %Y-%m-%d
+        
+    Returns:
+        TMIN, TAVG, and TMAX
+    """
+
+    # Query measurement table for temperature and calculate min, max and average
+    results = session.query(func.min(measurement.tobs), 
+                            func.avg(measurement.tobs),
+                            func.max(measurement.tobs)).\
+        filter(measurement.date >= start_date).all()
+
+    session.close()
+
+    mam_list = []
+    for tmin, tavg, tmax in results:
+        mam_dict = {}
+        mam_dict["Tmin"] = tmin
+        mam_dict["Tavg"] = tavg
+        mam_dict["Tmax"] = tmax
+        mam_list.append(mam_dict)
+
+    return jsonify(mam_list)
 
 
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def calc_temp_start_end(start_date, end_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
 
+    """
+    TMIN, TAVG, and TMAX for a list of dates.
+    
+    Args:
+        start_date (string): A date string in the format %Y-%m-%d
+        end_date (string): A date string in the format %Y-%m-%d
+        
+    Returns:
+        TMIN, TAVG, and TMAX
+    """
 
+    # Query measurement table for temperature and calculate min, max and average
+    results = session.query(func.min(measurement.tobs),
+                            func.avg(measurement.tobs),
+                            func.max(measurement.tobs)).\
+        filter(measurement.date >= start_date).\
+        filter(measurement.date <= end_date).all()
+
+    session.close()
+
+    mam_list = []
+    for tmin, tavg, tmax in results:
+        mam_dict = {}
+        mam_dict["Tmin"] = tmin
+        mam_dict["Tavg"] = tavg
+        mam_dict["Tmax"] = tmax
+        mam_list.append(mam_dict)
+
+    return jsonify(mam_list)
 
 
 if __name__ == '__main__':
